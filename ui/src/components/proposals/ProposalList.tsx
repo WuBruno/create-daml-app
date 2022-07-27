@@ -1,61 +1,57 @@
+import {
+  Proposal,
+  ProposalAction,
+} from "@daml.js/create-daml-app/lib/Governance";
+import { Party } from "@daml/types";
 import React from "react";
-import { Header, Rating, Table } from "semantic-ui-react";
+import { Table } from "semantic-ui-react";
+import { userContext } from "../App";
 
-type Props = {};
+type Props = {
+  partyToAlias: Map<Party, string>;
+};
 
-const ProposalList = (props: Props) => {
+const ProposalList = ({ partyToAlias }: Props) => {
+  const { contracts, loading } = userContext.useStreamQueries(Proposal);
+
+  if (loading) {
+    return null;
+  }
+
+  const parseProposalAction = (proposalAction: ProposalAction) => {
+    const value = proposalAction.value._2;
+
+    switch (proposalAction.tag) {
+      case "AddDirectorAction":
+        return `Adding Director ${partyToAlias.get(value)}`;
+      case "AddExpertAction":
+        return `Adding Expert ${partyToAlias.get(value)}`;
+      case "UpdateConstitutionAction":
+        return `Update Constitution: ${value}`;
+    }
+  };
+
   return (
     <Table celled padded>
       <Table.Header>
         <Table.Row>
-          <Table.HeaderCell singleLine>Evidence Rating</Table.HeaderCell>
-          <Table.HeaderCell>Effect</Table.HeaderCell>
-          <Table.HeaderCell>Efficacy</Table.HeaderCell>
-          <Table.HeaderCell>Consensus</Table.HeaderCell>
-          <Table.HeaderCell>Comments</Table.HeaderCell>
+          <Table.HeaderCell singleLine>Proposal</Table.HeaderCell>
+          <Table.HeaderCell>Proposer</Table.HeaderCell>
+          <Table.HeaderCell>Status</Table.HeaderCell>
         </Table.Row>
       </Table.Header>
 
       <Table.Body>
-        <Table.Row>
-          <Table.Cell>
-            <Header as="h2" textAlign="center">
-              A
-            </Header>
-          </Table.Cell>
-          <Table.Cell singleLine>Power Output</Table.Cell>
-          <Table.Cell>
-            <Rating icon="star" defaultRating={3} maxRating={3} />
-          </Table.Cell>
-          <Table.Cell textAlign="right">
-            80% <br />
-            <a href="#">18 studies</a>
-          </Table.Cell>
-          <Table.Cell>
-            Creatine supplementation is the reference compound for increasing
-            muscular creatine levels; there is variability in this increase,
-            however, with some nonresponders.
-          </Table.Cell>
-        </Table.Row>
-        <Table.Row>
-          <Table.Cell>
-            <Header as="h2" textAlign="center">
-              A
-            </Header>
-          </Table.Cell>
-          <Table.Cell singleLine>Weight</Table.Cell>
-          <Table.Cell>
-            <Rating icon="star" defaultRating={3} maxRating={3} />
-          </Table.Cell>
-          <Table.Cell textAlign="right">
-            100% <br />
-            <a href="#">65 studies</a>
-          </Table.Cell>
-          <Table.Cell>
-            Creatine is the reference compound for power improvement, with
-            numbers from one meta-analysis to assess potency
-          </Table.Cell>
-        </Table.Row>
+        {contracts &&
+          contracts.map(({ payload, contractId }) => (
+            <Table.Row key={contractId}>
+              <Table.Cell>
+                {parseProposalAction(payload.proposalAction)}
+              </Table.Cell>
+              <Table.Cell>{partyToAlias.get(payload.proposer)}</Table.Cell>
+              <Table.Cell>{payload.status}</Table.Cell>
+            </Table.Row>
+          ))}
       </Table.Body>
     </Table>
   );

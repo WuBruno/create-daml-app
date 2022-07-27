@@ -28,7 +28,6 @@ const MainView: React.FC = () => {
   );
   const aliases = publicContext.useStreamQueries(User.Alias, () => [], []);
   const myUser = myUserResult.contracts[0]?.payload;
-  const allUsers = userContext.useQuery(User.User).contracts;
   // USERS_END
 
   // Map to translate party identifiers to aliases.

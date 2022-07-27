@@ -6,13 +6,15 @@ import { Party } from "@daml/types";
 import React, { useState } from "react";
 import { Button, Modal, Tab } from "semantic-ui-react";
 import { userContext } from "../App";
+import AddDirector from "./AddDirector";
+import ProposalList from "./ProposalList";
 import UpdateConstitution from "./UpdateConstitution";
 
 type Props = {
   partyToAlias: Map<Party, string>;
 };
 
-const Proposals: React.FC<Props> = () => {
+const Proposals: React.FC<Props> = ({ partyToAlias }) => {
   const { contracts, loading } = userContext.useStreamQueries(
     Governance.Council
   );
@@ -20,6 +22,7 @@ const Proposals: React.FC<Props> = () => {
 
   if (!loading && contracts.length) {
     const council = contracts[0].payload;
+    const councilId = contracts[0].contractId;
     const panes = [
       {
         menuItem: "Update Constitution",
@@ -27,11 +30,20 @@ const Proposals: React.FC<Props> = () => {
           <UpdateConstitution
             initialConstitution={council.constitution}
             onSubmit={() => setOpen(false)}
-            councilId={contracts[0].contractId}
+            councilId={councilId}
           />
         ),
       },
-      { menuItem: "Add Director", render: undefined },
+      {
+        menuItem: "Add Director",
+        render: () => (
+          <AddDirector
+            partyToAlias={partyToAlias}
+            onSubmit={() => setOpen(false)}
+            councilId={councilId}
+          />
+        ),
+      },
       { menuItem: "Add Expert", render: undefined },
     ];
 
@@ -50,6 +62,7 @@ const Proposals: React.FC<Props> = () => {
             </Modal.Description>
           </Modal.Content>
         </Modal>
+        <ProposalList partyToAlias={partyToAlias} />
       </div>
     );
   }
