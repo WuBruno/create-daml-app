@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { Button, Modal, Tab } from "semantic-ui-react";
 import { userContext } from "../App";
 import AddDirector from "./AddDirector";
+import AddExpert from "./AddExpert";
 import ProposalList from "./ProposalList";
 import UpdateConstitution from "./UpdateConstitution";
 
@@ -44,7 +45,16 @@ const Proposals: React.FC<Props> = ({ partyToAlias }) => {
           />
         ),
       },
-      { menuItem: "Add Expert", render: undefined },
+      {
+        menuItem: "Add Expert",
+        render: () => (
+          <AddExpert
+            partyToAlias={partyToAlias}
+            onSubmit={() => setOpen(false)}
+            councilId={councilId}
+          />
+        ),
+      },
     ];
 
     return (
