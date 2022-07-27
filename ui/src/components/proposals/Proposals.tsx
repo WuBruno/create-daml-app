@@ -5,6 +5,7 @@ import { Governance } from "@daml.js/create-daml-app";
 import { Party } from "@daml/types";
 import React, { useState } from "react";
 import { Button, Modal, Tab } from "semantic-ui-react";
+import useMember, { Roles } from "../../hooks/useMember";
 import { userContext } from "../App";
 import AddDirector from "./AddDirector";
 import AddExpert from "./AddExpert";
@@ -19,6 +20,7 @@ const Proposals: React.FC<Props> = ({ partyToAlias }) => {
   const { contracts, loading } = userContext.useStreamQueries(
     Governance.Council
   );
+  const { role } = useMember();
   const [open, setOpen] = useState(false);
 
   if (!loading && contracts.length) {
@@ -59,19 +61,21 @@ const Proposals: React.FC<Props> = ({ partyToAlias }) => {
 
     return (
       <div>
-        <Modal
-          onClose={() => setOpen(false)}
-          onOpen={() => setOpen(true)}
-          open={open}
-          trigger={<Button>Propose</Button>}
-        >
-          <Modal.Header>Make New Proposal</Modal.Header>
-          <Modal.Content>
-            <Modal.Description>
-              <Tab panes={panes} />
-            </Modal.Description>
-          </Modal.Content>
-        </Modal>
+        {role !== Roles.Director && role !== Roles.Expert ? null : (
+          <Modal
+            onClose={() => setOpen(false)}
+            onOpen={() => setOpen(true)}
+            open={open}
+            trigger={<Button>Propose</Button>}
+          >
+            <Modal.Header>Make New Proposal</Modal.Header>
+            <Modal.Content>
+              <Modal.Description>
+                <Tab panes={panes} />
+              </Modal.Description>
+            </Modal.Content>
+          </Modal>
+        )}
         <ProposalList partyToAlias={partyToAlias} />
       </div>
     );

@@ -15,8 +15,8 @@ data TestUser = TestUser with
 setup : Script ()
 setup = do
   public <- createPublic
-  let aliases = ["Regulator", "Director1", "Director2", "Expert1", "Alice"]
-  [r, d1, d2, e1, _] <- mapA  (\alias -> createTestUser $ TestUser alias public) aliases
+  let aliases = ["Regulator", "Director1", "Director2", "Expert1", "Alice", "Bob"]
+  [r, d1, d2, e1, _, _] <- mapA  (\alias -> createTestUser $ TestUser alias public) aliases
 
   cid <- submit r $ createCmd Council 
                 with regulator = r,
