@@ -1,0 +1,114 @@
+module Governance where
+
+import DA.Set as Set
+import DA.List as List
+
+template Council with
+    regulator : Party
+    directors : Set Party
+    experts : Set Party
+    constitution : Text
+    recommendationId: Int
+  where
+    signatory regulator
+    observer experts, directors
+
+    choice AddDirector : ContractId Council
+      with newDirector : Party
+      controller regulator 
+      do create this with directors = insert newDirector directors, 
+                            recommendationId = recommendationId + 1 
+
+    choice AddExpert : ContractId Council
+      with newExpert : Party
+      controller regulator
+      do create this with experts = insert newExpert experts,
+                            recommendationId = recommendationId + 1 
+    
+    choice UpdateConstitution : ContractId Council
+      with newConstitution : Text
+      controller regulator
+      do create this with constitution = newConstitution,
+                            recommendationId = recommendationId + 1 
+
+    nonconsuming choice CreateProposal : ContractId Proposal 
+      with
+        proposalAction : ProposalAction
+        proposer : Party
+      controller proposer 
+      do
+        create Proposal with council = this,
+                              proposer,
+                              proposalAction,
+                              status = Voting,
+                              voted = Set.empty,
+                              votes = [] 
+
+data ProposalStatus = Voting | Review | Accepted | Rejected
+  deriving (Eq, Show)
+
+data ProposalAction = AddDirectorAction (ContractId Council, Party)
+  | AddExpertAction (ContractId Council, Party) 
+  | UpdateConstitutionAction (ContractId Council, Text)
+  deriving (Eq, Show)
+
+data DecisionOutcome =  Reject { pid : ContractId Proposal } | 
+  Accept { pid : ContractId Proposal, cid : ContractId Council }
+
+template Proposal 
+  with
+    council : Council
+    proposer : Party
+    proposalAction : ProposalAction
+    status : ProposalStatus
+    voted : Set Party
+    votes : [Bool]
+  where
+    signatory proposer
+    observer council.experts, council.directors, council.regulator
+
+    choice Decide : Optional DecisionOutcome 
+      with
+        accept : Bool
+      controller council.regulator
+      do
+        if not accept then do
+          pid <- create this with status = Rejected
+          pure $ Some Reject with pid
+        else if status /= Review then
+          pure None
+        else do
+          -- Execute proposal action 
+          cid <- case proposalAction of
+            AddDirectorAction (councilId, newDirector) -> 
+              exercise councilId AddDirector with newDirector
+            AddExpertAction (councilId, newExpert) -> 
+              exercise councilId AddExpert with newExpert
+            UpdateConstitutionAction (councilId, newConstitution) -> 
+              exercise councilId UpdateConstitution with newConstitution
+          -- Update status of proposal
+          pid <- create this with status = Accepted
+          pure $ Some Accept with pid, cid
+
+
+    choice Vote : ContractId Proposal 
+      with
+        director : Party
+        accept : Bool
+      controller director
+      do
+        assertMsg "Not valid director" $ Set.member director council.directors
+        assertMsg "Director already voted" $ not $ Set.member director voted
+        let _voted = Set.insert director voted
+        let _votes = accept :: votes
+        let allVoted = Set.size council.directors == length _votes 
+
+        if allVoted then do 
+          let yays = length $ List.filter identity $ votes 
+          let nays = length $ List.filter (\d -> not d) votes 
+          let _status = if yays >= nays then
+                Review else Rejected 
+
+          create this with voted = _voted, votes = _votes, status = _status
+        else
+          create this with voted = _voted, votes = _votes

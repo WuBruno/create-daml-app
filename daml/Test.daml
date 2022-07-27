@@ -1,0 +1,120 @@
+module Test where
+
+import DA.Set as Set
+import Daml.Script
+
+import Governance
+
+setup = script do
+  r <- allocateParty "Regulator"
+  d1 <- allocateParty "Director1"
+  d2 <- allocateParty "Director2"
+  e1 <- allocateParty "Expert1"
+
+  cid <- submit r $ createCmd Council 
+                with regulator = r,
+                      directors = Set.fromList [d1, d2], 
+                      experts = Set.fromList [e1], 
+                      constitution = "New Constitution", 
+                      recommendationId = 0
+  pure (r, [d1, d2], [e1], cid)
+
+
+addExpertTest : Script ()
+addExpertTest = script do
+  (r, [d1, d2], [e1], cid) <- setup
+
+  newExpert <- allocateParty "Expert2"
+  
+  pid <- submit d1 $ exerciseCmd cid $ CreateProposal 
+    with proposalAction = AddExpertAction (cid, newExpert), 
+          proposer = d1
+  
+  pid2 <- submit d1 $ exerciseCmd pid Vote with director = d1, accept = True 
+  pid3 <- submit d2 $ exerciseCmd pid2 Vote with director = d2, accept = True 
+
+  Some result <- submit r $ exerciseCmd pid3 Decide with accept = True
+
+  case result of
+    Accept _ _cid -> do 
+      Some council <- queryContractId r _cid
+      let [_, e2] = Set.toList council.experts
+
+      assertMsg "Expert2 should be added" $ partyToText e2 == "Expert2"
+    
+      pure ()
+    _ -> abort "Error"
+
+updateConstitutionTest = script do
+  (r, [d1, d2], [e1], cid) <- setup
+
+  pid <- submit d1 $ exerciseCmd cid $ CreateProposal 
+    with proposalAction = UpdateConstitutionAction (cid, "hello"), 
+          proposer = d1
+  
+  pid2 <- submit d1 $ exerciseCmd pid Vote with director = d1, accept = True 
+  pid3 <- submit d2 $ exerciseCmd pid2 Vote with director = d2, accept = True 
+
+  Some result <- submit r $ exerciseCmd pid3 Decide with accept = True
+
+  case result of
+    Accept _ _cid -> do
+      Some council <- queryContractId r _cid
+      assertMsg "Constitution should be updated" $ council.constitution == "hello"
+
+      pure ()
+    _ -> abort "Error"
+
+addDirectorTest = script do
+  (r, [d1, d2], [e1], cid) <- setup
+
+  newDirector <- allocateParty "Director3"
+
+  pid <- submit d1 $ exerciseCmd cid $ CreateProposal 
+    with proposalAction = AddDirectorAction (cid, newDirector), 
+          proposer = d1
+  
+  pid2 <- submit d1 $ exerciseCmd pid Vote with director = d1, accept = True 
+  pid3 <- submit d2 $ exerciseCmd pid2 Vote with director = d2, accept = True 
+
+  Some result <- submit r $ exerciseCmd pid3 Decide with accept = True
+
+  case result of
+    Accept _ _cid -> do
+      Some council <- queryContractId r _cid
+      let [_, _, d3] = Set.toList council.directors
+      assertMsg "Directo3 should be added" $ partyToText d3 == "Director3"
+
+      pure ()
+    _ -> abort "Error"
+
+regulatorRejectTest = script do
+  (r, [d1, d2], [e1], cid) <- setup
+
+  pid <- submit d1 $ exerciseCmd cid $ CreateProposal 
+    with proposalAction = UpdateConstitutionAction (cid, "hello"), 
+          proposer = d1
+  
+  pid2 <- submit d1 $ exerciseCmd pid Vote with director = d1, accept = True 
+  pid3 <- submit d2 $ exerciseCmd pid2 Vote with director = d2, accept = True 
+
+  Some result <- submit r $ exerciseCmd pid3 Decide with accept = False
+
+  case result of
+    Reject  _ -> pure ()
+    _ -> abort "Error"
+
+
+voteRejectTest = script do
+  (r, [d1, d2], [e1], cid) <- setup
+
+  pid <- submit d1 $ exerciseCmd cid $ CreateProposal 
+    with proposalAction = UpdateConstitutionAction (cid, "hello"), 
+          proposer = d1
+  
+  pid2 <- submit d1 $ exerciseCmd pid Vote with director = d1, accept = False 
+  pid3 <- submit d2 $ exerciseCmd pid2 Vote with director = d2, accept = False
+
+  Some proposal <- queryContractId r pid3
+
+  assertMsg "Rejected" $ proposal.status == Rejected
