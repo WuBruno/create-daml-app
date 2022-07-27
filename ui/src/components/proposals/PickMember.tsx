@@ -1,11 +1,10 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Governance } from "@daml.js/create-daml-app";
 import { Party } from "@daml/types";
 import React from "react";
 import { Button, Form, Tab } from "semantic-ui-react";
-import { userContext } from "../App";
+import useMember from "../../hooks/useMember";
 
 type Props = {
   partyToAlias: Map<Party, string>;
@@ -18,30 +17,20 @@ type Props = {
 const PickMember: React.FC<Props> = ({ partyToAlias, onSubmit }) => {
   const [newParty, setNewParty] = React.useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const council = userContext.useQuery(Governance.Council).contracts;
+  const { directors, experts, regulator } = useMember();
 
   const aliasToOption = (party: string, alias: string) => {
     return { key: party, text: alias, value: party };
   };
-  const options = !council.length
-    ? []
-    : Array.from(partyToAlias.entries())
-        .filter(
-          (party) =>
-            !council[0].payload.directors.map
-              .entriesArray()
-              .map((d) => d[0])
-              .includes(party[0])
-        )
-        .filter(
-          (party) =>
-            !council[0].payload.experts.map
-              .entriesArray()
-              .map((d) => d[0])
-              .includes(party[0])
-        )
-        .filter((party) => council[0].payload.regulator !== party[0])
-        .map((e) => aliasToOption(e[0], e[1]));
+
+  const options =
+    !directors || !experts
+      ? []
+      : Array.from(partyToAlias.entries())
+          .filter((party) => !directors.includes(party[0]))
+          .filter((party) => !experts.includes(party[0]))
+          .filter((party) => regulator !== party[0])
+          .map((e) => aliasToOption(e[0], e[1]));
 
   const addParty = async (event?: React.FormEvent) => {
     if (event) {

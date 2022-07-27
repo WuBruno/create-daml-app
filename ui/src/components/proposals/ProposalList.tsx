@@ -6,6 +6,7 @@ import { Party } from "@daml/types";
 import React from "react";
 import { Table } from "semantic-ui-react";
 import { userContext } from "../App";
+import ActionButton from "./ActionButton";
 
 type Props = {
   partyToAlias: Map<Party, string>;
@@ -38,6 +39,7 @@ const ProposalList = ({ partyToAlias }: Props) => {
           <Table.HeaderCell singleLine>Proposal</Table.HeaderCell>
           <Table.HeaderCell>Proposer</Table.HeaderCell>
           <Table.HeaderCell>Status</Table.HeaderCell>
+          <Table.HeaderCell>Action</Table.HeaderCell>
         </Table.Row>
       </Table.Header>
 
@@ -50,6 +52,9 @@ const ProposalList = ({ partyToAlias }: Props) => {
               </Table.Cell>
               <Table.Cell>{partyToAlias.get(payload.proposer)}</Table.Cell>
               <Table.Cell>{payload.status}</Table.Cell>
+              <Table.Cell>
+                <ActionButton proposal={payload} proposalId={contractId} />
+              </Table.Cell>
             </Table.Row>
           ))}
       </Table.Body>

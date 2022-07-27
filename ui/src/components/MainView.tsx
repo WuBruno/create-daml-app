@@ -12,22 +12,16 @@ import {
   Icon,
   Segment,
 } from "semantic-ui-react";
+import useMember, { Roles } from "../hooks/useMember";
 import { publicContext, userContext } from "./App";
 import Council from "./Council";
-import PartyListEdit from "./PartyListEdit";
 import Proposals from "./proposals/Proposals";
 
 // USERS_BEGIN
 const MainView: React.FC = () => {
   const username = userContext.useParty();
-
-  const myUserResult = userContext.useStreamFetchByKeys(
-    User.User,
-    () => [username],
-    [username]
-  );
   const aliases = publicContext.useStreamQueries(User.Alias, () => [], []);
-  const myUser = myUserResult.contracts[0]?.payload;
+  const { role } = useMember();
   // USERS_END
 
   // Map to translate party identifiers to aliases.
@@ -44,20 +38,6 @@ const MainView: React.FC = () => {
   const myUserName = aliases.loading
     ? "loading ..."
     : partyToAlias.get(username) ?? username;
-
-  // FOLLOW_BEGIN
-  const ledger = userContext.useLedger();
-
-  const follow = async (userToFollow: Party): Promise<boolean> => {
-    try {
-      await ledger.exerciseByKey(User.User.Follow, username, { userToFollow });
-      return true;
-    } catch (error) {
-      alert(`Unknown error:\n${JSON.stringify(error)}`);
-      return false;
-    }
-  };
-  // FOLLOW_END
 
   return (
     <Container>
@@ -79,15 +59,9 @@ const MainView: React.FC = () => {
                 <Icon name="user" />
                 <Header.Content>
                   {myUserName ?? "Loading..."}
-                  <Header.Subheader>Users I'm following</Header.Subheader>
+                  <Header.Subheader>{Roles[role]}</Header.Subheader>
                 </Header.Content>
               </Header>
-              <Divider />
-              <PartyListEdit
-                parties={myUser?.following ?? []}
-                partyToAlias={partyToAlias}
-                onAddParty={follow}
-              />
             </Segment>
 
             <Segment>
